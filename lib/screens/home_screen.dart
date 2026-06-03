@@ -6,6 +6,8 @@ import '../data/exercise_catalog.dart';
 import '../data/plan_generator.dart';
 import '../models/exercise.dart';
 import '../models/workout_plan.dart';
+import '../services/profile_service.dart';
+import '../theme/app_colors.dart';
 import 'exercise_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
@@ -15,10 +17,11 @@ class HomeScreen extends StatefulWidget {
   State<HomeScreen> createState() => _HomeScreenState();
 }
 
-class _HomeScreenState extends State<HomeScreen> {
+class _HomeScreenState extends State<HomeScreen>
+    with SingleTickerProviderStateMixin {
   final _planGenerator = const PlanGenerator();
+  late TabController _tabController;
 
-  int _tab = 0;
   FitnessGoal _goal = FitnessGoal.hipertrofia;
   FitnessLevel _level = FitnessLevel.principiante;
   int _daysPerWeek = 3;
@@ -26,6 +29,26 @@ class _HomeScreenState extends State<HomeScreen> {
   final Set<MovementType> _types = {};
   final Set<BodyZone> _zones = {};
   final Set<Equipment> _equipment = {};
+
+  @override
+  void initState() {
+    super.initState();
+    _tabController = TabController(length: 2, vsync: this);
+    // Load profile defaults if available
+    final profile = ProfileService.instance.profile;
+    if (profile != null) {
+      _goal = profile.goal;
+      _level = profile.level;
+      _daysPerWeek = profile.daysPerWeek;
+      _equipment.addAll(profile.availableEquipment);
+    }
+  }
+
+  @override
+  void dispose() {
+    _tabController.dispose();
+    super.dispose();
+  }
 
   List<Exercise> get _filteredExercises {
     return exerciseCatalog.where((exercise) {
@@ -56,7 +79,14 @@ class _HomeScreenState extends State<HomeScreen> {
   Widget build(BuildContext context) {
     return Scaffold(
       appBar: AppBar(
-        title: const Text(AppConstants.appName),
+        title: Row(
+          children: [
+            Image.asset('assets/images/trinity_logo.png',
+                width: 28, height: 28),
+            const SizedBox(width: 10),
+            const Text(AppConstants.appName),
+          ],
+        ),
         actions: [
           IconButton(
             tooltip: 'Fuentes',
@@ -64,9 +94,19 @@ class _HomeScreenState extends State<HomeScreen> {
             icon: const Icon(Icons.library_books_rounded),
           ),
         ],
+        bottom: TabBar(
+          controller: _tabController,
+          indicatorColor: AppColors.orange,
+          labelColor: AppColors.orange,
+          unselectedLabelColor: AppColors.textMuted,
+          tabs: const [
+            Tab(icon: Icon(Icons.fitness_center_rounded), text: 'Catálogo'),
+            Tab(icon: Icon(Icons.calendar_month_rounded), text: 'Plan'),
+          ],
+        ),
       ),
-      body: IndexedStack(
-        index: _tab,
+      body: TabBarView(
+        controller: _tabController,
         children: [
           _CatalogTab(
             exercises: _filteredExercises,
@@ -100,20 +140,6 @@ class _HomeScreenState extends State<HomeScreen> {
             onDaysChanged: (days) => setState(() => _daysPerWeek = days),
             onOpenExercise: _openExercise,
             onShowSources: _showSources,
-          ),
-        ],
-      ),
-      bottomNavigationBar: NavigationBar(
-        selectedIndex: _tab,
-        onDestinationSelected: (index) => setState(() => _tab = index),
-        destinations: const [
-          NavigationDestination(
-            icon: Icon(Icons.fitness_center_rounded),
-            label: 'Catálogo',
-          ),
-          NavigationDestination(
-            icon: Icon(Icons.calendar_month_rounded),
-            label: 'Plan',
           ),
         ],
       ),
