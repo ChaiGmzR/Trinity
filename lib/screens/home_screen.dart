@@ -5,13 +5,21 @@ import '../core/constants/app_constants.dart';
 import '../data/exercise_catalog.dart';
 import '../data/plan_generator.dart';
 import '../models/exercise.dart';
+import '../models/user_profile.dart';
 import '../models/workout_plan.dart';
 import '../services/profile_service.dart';
 import '../theme/app_colors.dart';
 import 'exercise_detail_screen.dart';
 
 class HomeScreen extends StatefulWidget {
-  const HomeScreen({super.key});
+  const HomeScreen({
+    super.key,
+    required this.profile,
+    required this.onProfileUpdated,
+  });
+
+  final UserProfile profile;
+  final VoidCallback onProfileUpdated;
 
   @override
   State<HomeScreen> createState() => _HomeScreenState();
@@ -22,9 +30,9 @@ class _HomeScreenState extends State<HomeScreen>
   final _planGenerator = const PlanGenerator();
   late TabController _tabController;
 
-  FitnessGoal _goal = FitnessGoal.hipertrofia;
-  FitnessLevel _level = FitnessLevel.principiante;
-  int _daysPerWeek = 3;
+  FitnessGoal get _goal => widget.profile.goal;
+  FitnessLevel get _level => widget.profile.level;
+  int get _daysPerWeek => widget.profile.daysPerWeek;
   String _query = '';
   final Set<MovementType> _types = {};
   final Set<BodyZone> _zones = {};
@@ -34,13 +42,19 @@ class _HomeScreenState extends State<HomeScreen>
   void initState() {
     super.initState();
     _tabController = TabController(length: 2, vsync: this);
-    // Load profile defaults if available
-    final profile = ProfileService.instance.profile;
-    if (profile != null) {
-      _goal = profile.goal;
-      _level = profile.level;
-      _daysPerWeek = profile.daysPerWeek;
-      _equipment.addAll(profile.availableEquipment);
+    _equipment.addAll(widget.profile.availableEquipment);
+  }
+
+  @override
+  void didUpdateWidget(covariant HomeScreen oldWidget) {
+    super.didUpdateWidget(oldWidget);
+    // Sincronizar equipación del perfil si cambia
+    final oldEquip = oldWidget.profile.availableEquipment;
+    final newEquip = widget.profile.availableEquipment;
+    if (oldEquip.length != newEquip.length ||
+        !oldEquip.every(newEquip.contains)) {
+      _equipment.clear();
+      _equipment.addAll(newEquip);
     }
   }
 
@@ -74,6 +88,32 @@ class _HomeScreenState extends State<HomeScreen>
     selectedTypes: _types,
     selectedEquipment: _equipment,
   );
+
+  void _updateGoal(FitnessGoal goal) async {
+    final updated = widget.profile.copyWith(
+      goal: goal,
+      weekProgress: List.filled(widget.profile.daysPerWeek, false),
+      currentDayIndex: 0,
+    );
+    await ProfileService.instance.save(updated);
+    widget.onProfileUpdated();
+  }
+
+  void _updateLevel(FitnessLevel level) async {
+    final updated = widget.profile.copyWith(level: level);
+    await ProfileService.instance.save(updated);
+    widget.onProfileUpdated();
+  }
+
+  void _updateDays(int days) async {
+    final updated = widget.profile.copyWith(
+      daysPerWeek: days,
+      weekProgress: List.filled(days, false),
+      currentDayIndex: 0,
+    );
+    await ProfileService.instance.save(updated);
+    widget.onProfileUpdated();
+  }
 
   @override
   Widget build(BuildContext context) {
@@ -118,9 +158,9 @@ class _HomeScreenState extends State<HomeScreen>
             selectedTypes: _types,
             selectedZones: _zones,
             selectedEquipment: _equipment,
-            onGoalChanged: (goal) => setState(() => _goal = goal),
-            onLevelChanged: (level) => setState(() => _level = level),
-            onDaysChanged: (days) => setState(() => _daysPerWeek = days),
+            onGoalChanged: _updateGoal,
+            onLevelChanged: _updateLevel,
+            onDaysChanged: _updateDays,
             onQueryChanged: (query) => setState(() => _query = query),
             onToggleType: _toggleType,
             onToggleZone: _toggleZone,
@@ -135,9 +175,9 @@ class _HomeScreenState extends State<HomeScreen>
             goal: _goal,
             level: _level,
             daysPerWeek: _daysPerWeek,
-            onGoalChanged: (goal) => setState(() => _goal = goal),
-            onLevelChanged: (level) => setState(() => _level = level),
-            onDaysChanged: (days) => setState(() => _daysPerWeek = days),
+            onGoalChanged: _updateGoal,
+            onLevelChanged: _updateLevel,
+            onDaysChanged: _updateDays,
             onOpenExercise: _openExercise,
             onShowSources: _showSources,
           ),

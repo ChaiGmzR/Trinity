@@ -35,7 +35,18 @@ class ExerciseDetailScreen extends StatelessWidget {
             networkVideoUrl: exercise.onlineVideoUrl,
             posterAsset: exercise.imageAsset,
           ),
-          const SizedBox(height: 18),
+          const SizedBox(height: 6),
+          Center(
+            child: Text(
+              'Nota: Mostrando video demostrativo del patrón de ${exercise.type.label.toLowerCase()}.',
+              style: theme.textTheme.bodySmall?.copyWith(
+                color: theme.colorScheme.onSurface.withValues(alpha: 0.5),
+                fontStyle: FontStyle.italic,
+              ),
+              textAlign: TextAlign.center,
+            ),
+          ),
+          const SizedBox(height: 12),
           Text(exercise.name, style: theme.textTheme.headlineSmall),
           const SizedBox(height: 8),
           Text(exercise.description, style: theme.textTheme.bodyLarge),

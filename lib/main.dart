@@ -92,8 +92,12 @@ class _MainShellState extends State<_MainShell> {
           DashboardScreen(
             profile: _profile,
             onProfileUpdated: _refreshProfile,
+            onTabChanged: (i) => setState(() => _tab = i),
           ),
-          const HomeScreen(),
+          HomeScreen(
+            profile: _profile,
+            onProfileUpdated: _refreshProfile,
+          ),
           ProfileScreen(
             profile: _profile,
             onProfileUpdated: _refreshProfile,

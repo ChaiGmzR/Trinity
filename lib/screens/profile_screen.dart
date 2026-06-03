@@ -1,5 +1,6 @@
 import 'package:flutter/material.dart';
 
+import '../core/constants/app_constants.dart';
 import '../models/exercise.dart';
 import '../models/user_profile.dart';
 import '../services/profile_service.dart';
@@ -267,7 +268,7 @@ class _ProfileScreenState extends State<ProfileScreen> {
         // ── Versión ──
         Center(
           child: Text(
-            'Trinity Gym v1.0.0',
+            '${AppConstants.appName} v${AppConstants.appVersion}',
             style: AppTextStyles.bodySmall,
           ),
         ),

@@ -20,10 +20,12 @@ class DashboardScreen extends StatefulWidget {
     super.key,
     required this.profile,
     required this.onProfileUpdated,
+    this.onTabChanged,
   });
 
   final UserProfile profile;
   final VoidCallback onProfileUpdated;
+  final ValueChanged<int>? onTabChanged;
 
   @override
   State<DashboardScreen> createState() => _DashboardScreenState();
@@ -37,6 +39,133 @@ class _DashboardScreenState extends State<DashboardScreen> {
   void initState() {
     super.initState();
     _profile = widget.profile;
+  }
+
+  void _editGoal() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.bgCard,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Editar Objetivo', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: FitnessGoal.values.map((g) {
+                  return ChoiceChip(
+                    label: Text(g.label),
+                    selected: g == _profile.goal,
+                    onSelected: (selected) async {
+                      if (selected) {
+                        Navigator.pop(context);
+                        final updated = _profile.copyWith(
+                          goal: g,
+                          weekProgress: List.filled(_profile.daysPerWeek, false),
+                          currentDayIndex: 0,
+                        );
+                        await ProfileService.instance.save(updated);
+                        setState(() => _profile = updated);
+                        widget.onProfileUpdated();
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _editLevel() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.bgCard,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Editar Nivel', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                runSpacing: 8,
+                children: FitnessLevel.values.map((l) {
+                  return ChoiceChip(
+                    label: Text(l.label),
+                    selected: l == _profile.level,
+                    onSelected: (selected) async {
+                      if (selected) {
+                        Navigator.pop(context);
+                        final updated = _profile.copyWith(level: l);
+                        await ProfileService.instance.save(updated);
+                        setState(() => _profile = updated);
+                        widget.onProfileUpdated();
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
+  }
+
+  void _editDays() {
+    showModalBottomSheet<void>(
+      context: context,
+      showDragHandle: true,
+      backgroundColor: AppColors.bgCard,
+      builder: (context) {
+        return Container(
+          padding: const EdgeInsets.fromLTRB(16, 8, 16, 24),
+          child: Column(
+            mainAxisSize: MainAxisSize.min,
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              Text('Días por semana', style: AppTextStyles.titleLarge),
+              const SizedBox(height: 16),
+              Wrap(
+                spacing: 8,
+                children: [2, 3, 4, 5].map((d) {
+                  return ChoiceChip(
+                    label: Text('$d días'),
+                    selected: d == _profile.daysPerWeek,
+                    onSelected: (selected) async {
+                      if (selected) {
+                        Navigator.pop(context);
+                        final updated = _profile.copyWith(
+                          daysPerWeek: d,
+                          weekProgress: List.filled(d, false),
+                          currentDayIndex: 0,
+                        );
+                        await ProfileService.instance.save(updated);
+                        setState(() => _profile = updated);
+                        widget.onProfileUpdated();
+                      }
+                    },
+                  );
+                }).toList(),
+              ),
+            ],
+          ),
+        );
+      },
+    );
   }
 
   @override
@@ -273,6 +402,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Objetivo',
                 value: _profile.goal.label,
                 color: AppColors.orange,
+                onTap: _editGoal,
               ),
             ),
             const SizedBox(width: 12),
@@ -282,6 +412,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Nivel',
                 value: _profile.level.label,
                 color: AppColors.cyan,
+                onTap: _editLevel,
               ),
             ),
           ],
@@ -295,6 +426,7 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Días/semana',
                 value: '${_profile.daysPerWeek}',
                 color: AppColors.gold,
+                onTap: _editDays,
               ),
             ),
             const SizedBox(width: 12),
@@ -304,6 +436,9 @@ class _DashboardScreenState extends State<DashboardScreen> {
                 label: 'Ejercicios',
                 value: '${exerciseCatalog.length}',
                 color: AppColors.success,
+                onTap: () {
+                  widget.onTabChanged?.call(1);
+                },
               ),
             ),
           ],
@@ -387,34 +522,55 @@ class _StatCard extends StatelessWidget {
     required this.label,
     required this.value,
     required this.color,
+    this.onTap,
   });
 
   final IconData icon;
   final String label;
   final String value;
   final Color color;
+  final VoidCallback? onTap;
 
   @override
   Widget build(BuildContext context) {
-    return Container(
-      padding: const EdgeInsets.all(14),
-      decoration: BoxDecoration(
-        color: color.withValues(alpha: 0.08),
-        borderRadius: BorderRadius.circular(14),
-        border: Border.all(color: color.withValues(alpha: 0.15)),
-      ),
-      child: Column(
-        crossAxisAlignment: CrossAxisAlignment.start,
-        children: [
-          Icon(icon, color: color, size: 20),
-          const SizedBox(height: 8),
-          Text(label, style: AppTextStyles.labelSmall),
-          const SizedBox(height: 2),
-          Text(
-            value,
-            style: AppTextStyles.titleSmall.copyWith(color: color),
+    return AnimatedContainer(
+      duration: const Duration(milliseconds: 200),
+      child: Material(
+        color: Colors.transparent,
+        child: InkWell(
+          onTap: onTap,
+          borderRadius: BorderRadius.circular(14),
+          child: Container(
+            padding: const EdgeInsets.all(14),
+            decoration: BoxDecoration(
+              color: color.withValues(alpha: 0.08),
+              borderRadius: BorderRadius.circular(14),
+              border: Border.all(color: color.withValues(alpha: 0.15)),
+            ),
+            child: Column(
+              crossAxisAlignment: CrossAxisAlignment.start,
+              children: [
+                Row(
+                  mainAxisAlignment: MainAxisAlignment.spaceBetween,
+                  children: [
+                    Icon(icon, color: color, size: 20),
+                    if (onTap != null && label != 'Ejercicios')
+                      Icon(Icons.edit_rounded, color: color.withValues(alpha: 0.5), size: 14)
+                    else if (onTap != null && label == 'Ejercicios')
+                      Icon(Icons.arrow_forward_rounded, color: color.withValues(alpha: 0.5), size: 14),
+                  ],
+                ),
+                const SizedBox(height: 8),
+                Text(label, style: AppTextStyles.labelSmall),
+                const SizedBox(height: 2),
+                Text(
+                  value,
+                  style: AppTextStyles.titleSmall.copyWith(color: color),
+                ),
+              ],
+            ),
           ),
-        ],
+        ),
       ),
     );
   }
