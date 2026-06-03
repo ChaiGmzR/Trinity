@@ -9,23 +9,16 @@ const _cdcSitups = 'assets/videos/cdc_situps.mp4';
 const _cdcCalf = 'assets/videos/cdc_toe_lift.mp4';
 
 const _onlineVideos = <String, String>{
-  'pushup': 'https://www.cdc.gov/physicalactivity/videos/Push-ups_Ipod-Lg.mp4',
-  'squat': 'https://www.cdc.gov/physicalactivity/videos/Half_squat_IPod_Lg.mp4',
-  'overhead_press':
-      'https://www.cdc.gov/physicalactivity/videos/Overhead_Press-Home_Ipod-Lg.mp4',
-  'curl':
-      'https://www.cdc.gov/physicalactivity/videos/Biscep_Curls_Ipod-Lg.mp4',
-  'superman':
-      'https://www.cdc.gov/physicalactivity/videos/Superman_Ipod-Lg.mp4',
-  'core': 'https://www.cdc.gov/physicalactivity/videos/Sit-ups_Ipod-Lg.mp4',
-  'calf_raise':
-      'https://www.cdc.gov/physicalactivity/videos/Toe_Lift_Ipod-Lg.mp4',
-  'cardio':
-      'https://commons.wikimedia.org/wiki/Special:Redirect/file/Burpee_How_To.webm',
-  'lunge':
-      'https://commons.wikimedia.org/wiki/Special:Redirect/file/Basic_single_leg_squat.webm',
-  'row':
-      'https://commons.wikimedia.org/wiki/Special:Redirect/file/Muscle_Strengthening_at_the_Gym_-_Row_Machine.webm',
+  'pushup': 'https://www.youtube.com/watch?v=IODxDxX7oi4',
+  'squat': 'https://www.youtube.com/watch?v=aclHkVaku9U',
+  'overhead_press': 'https://www.youtube.com/watch?v=QAQ6gdVuK8M',
+  'curl': 'https://www.youtube.com/watch?v=ykJmrZ5v0Oo',
+  'superman': 'https://www.youtube.com/watch?v=z6PJ09v5y4U',
+  'core': 'https://www.youtube.com/watch?v=pSHjTRCQxIw',
+  'calf_raise': 'https://www.youtube.com/watch?v=-M4-G8p8fmc',
+  'cardio': 'https://www.youtube.com/watch?v=ml6cT4AZdqI',
+  'lunge': 'https://www.youtube.com/watch?v=qD1vZPXGn64',
+  'row': 'https://www.youtube.com/watch?v=GZbfZ033fEs',
 };
 
 String _image(String pattern) => 'assets/images/$pattern.png';

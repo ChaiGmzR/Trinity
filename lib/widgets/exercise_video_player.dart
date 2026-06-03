@@ -1,6 +1,7 @@
 import 'dart:async';
 import 'package:flutter/material.dart';
 import 'package:video_player/video_player.dart';
+import 'package:youtube_player_flutter/youtube_player_flutter.dart';
 import '../theme/app_colors.dart';
 
 class ExerciseVideoPlayer extends StatefulWidget {
@@ -21,6 +22,7 @@ class ExerciseVideoPlayer extends StatefulWidget {
 
 class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
   VideoPlayerController? _controller;
+  YoutubePlayerController? _youtubeController;
   bool _online = false;
   bool _loading = true;
   String? _error;
@@ -50,6 +52,7 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
   void dispose() {
     _controller?.removeListener(_onVideoControllerUpdate);
     _controller?.dispose();
+    _youtubeController?.dispose();
     _controlsTimer?.cancel();
     super.dispose();
   }
@@ -84,58 +87,105 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
 
   Future<void> _load({required bool online}) async {
     final canUseOnline = online && widget.networkVideoUrl.isNotEmpty;
+    final isYouTube = canUseOnline &&
+        (widget.networkVideoUrl.contains('youtube.com') ||
+            widget.networkVideoUrl.contains('youtu.be'));
+
     setState(() {
       _loading = true;
       _error = null;
       _online = canUseOnline;
     });
 
-    final old = _controller;
+    // Limpiar controladores existentes
+    final oldController = _controller;
     _controller = null;
-    if (old != null) {
-      old.removeListener(_onVideoControllerUpdate);
-      await old.dispose();
+    if (oldController != null) {
+      oldController.removeListener(_onVideoControllerUpdate);
+      await oldController.dispose();
     }
 
-    final controller = canUseOnline
-        ? VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl))
-        : VideoPlayerController.asset(widget.assetVideo);
+    final oldYoutubeController = _youtubeController;
+    _youtubeController = null;
+    if (oldYoutubeController != null) {
+      oldYoutubeController.dispose();
+    }
 
-    try {
-      await controller.initialize();
-      await controller.setLooping(true);
-      await controller.play();
-      await controller.setVolume(_muted ? 0.0 : 1.0);
-      controller.addListener(_onVideoControllerUpdate);
-      if (!mounted) {
-        await controller.dispose();
-        return;
-      }
-      setState(() {
-        _controller = controller;
-        _loading = false;
-        _showControls = true;
-      });
-      _resetControlsTimer();
-    } catch (error) {
-      if (old != null) {
-        old.addListener(_onVideoControllerUpdate);
-        _controller = old;
-      }
-      if (!mounted) {
-        return;
-      }
-      if (canUseOnline) {
+    if (isYouTube) {
+      try {
+        final videoId = YoutubePlayer.convertUrlToId(widget.networkVideoUrl);
+        if (videoId == null) {
+          throw Exception('No se pudo extraer el ID del video de YouTube.');
+        }
+
+        final youtubeController = YoutubePlayerController(
+          initialVideoId: videoId,
+          flags: const YoutubePlayerFlags(
+            autoPlay: true,
+            mute: false,
+            loop: true,
+            isLive: false,
+          ),
+        );
+
+        if (!mounted) {
+          youtubeController.dispose();
+          return;
+        }
+
         setState(() {
-          _error = 'No se pudo cargar el video online. Usando demo offline.';
+          _youtubeController = youtubeController;
+          _loading = false;
+          _showControls = false; // El reproductor de YouTube maneja sus propios controles
+        });
+      } catch (error) {
+        if (!mounted) return;
+        setState(() {
+          _error = 'No se pudo cargar el video de YouTube. Usando demo offline.';
         });
         await _load(online: false);
-        return;
       }
-      setState(() {
-        _loading = false;
-        _error = 'No se pudo reproducir el video local.';
-      });
+    } else {
+      final controller = canUseOnline
+          ? VideoPlayerController.networkUrl(Uri.parse(widget.networkVideoUrl))
+          : VideoPlayerController.asset(widget.assetVideo);
+
+      try {
+        await controller.initialize();
+        await controller.setLooping(true);
+        await controller.play();
+        await controller.setVolume(_muted ? 0.0 : 1.0);
+        controller.addListener(_onVideoControllerUpdate);
+        if (!mounted) {
+          await controller.dispose();
+          return;
+        }
+        setState(() {
+          _controller = controller;
+          _loading = false;
+          _showControls = true;
+        });
+        _resetControlsTimer();
+      } catch (error) {
+        if (oldController != null) {
+          oldController.addListener(_onVideoControllerUpdate);
+          _controller = oldController;
+        }
+        if (!mounted) {
+          return;
+        }
+        if (canUseOnline) {
+          setState(() {
+            _error = 'No se pudo cargar el video online. Usando demo offline.';
+          });
+          await _load(online: false);
+          return;
+        }
+        setState(() {
+          _loading = false;
+          _error = 'No se pudo reproducir el video local.';
+        });
+      }
     }
   }
 
@@ -150,12 +200,15 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
     final theme = Theme.of(context);
     final controller = _controller;
     final initialized = controller?.value.isInitialized ?? false;
+    final isYoutubeActive = _online && _youtubeController != null;
 
     return Column(
       crossAxisAlignment: CrossAxisAlignment.start,
       children: [
         AspectRatio(
-          aspectRatio: initialized ? controller!.value.aspectRatio : 16 / 9,
+          aspectRatio: isYoutubeActive
+              ? 16 / 9
+              : (initialized ? controller!.value.aspectRatio : 16 / 9),
           child: ClipRRect(
             borderRadius: BorderRadius.circular(16),
             child: Container(
@@ -163,7 +216,19 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
               child: Stack(
                 fit: StackFit.expand,
                 children: [
-                  if (initialized)
+                  if (isYoutubeActive)
+                    YoutubePlayer(
+                      controller: _youtubeController!,
+                      showVideoProgressIndicator: true,
+                      progressIndicatorColor: AppColors.orange,
+                      progressColors: const ProgressBarColors(
+                        playedColor: AppColors.orange,
+                        handleColor: AppColors.orange,
+                        bufferedColor: Colors.white30,
+                        backgroundColor: Colors.black26,
+                      ),
+                    )
+                  else if (initialized)
                     GestureDetector(
                       onTap: _toggleControlsVisibility,
                       child: Stack(
@@ -234,7 +299,7 @@ class _ExerciseVideoPlayerState extends State<ExerciseVideoPlayer> {
                     : (_) => _load(online: true),
               ),
               const Spacer(),
-              if (initialized)
+              if (initialized || isYoutubeActive)
                 Text(
                   _online ? 'Streaming HD' : 'Local (Sin conexión)',
                   style: theme.textTheme.labelMedium?.copyWith(
